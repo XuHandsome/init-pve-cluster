@@ -1,0 +1,94 @@
+- name: update aliyun apt source
+  copy: src=sources.list dest=/etc/apt/sources.list
+  tags:
+    - init
+
+- name: remove enterprise source
+  file:
+    name: /etc/apt/sources.list.d/pve-enterprise.list
+    state: absent
+  tags:
+    - init
+
+- block:
+  - name: check cluster exists
+    shell: find /etc/pve -name corosync.conf -print|wc -l
+    register: cluster_exists
+
+  - name: create cluster {{ cluster_name }}
+    shell: pvecm create {{ cluster_name }}
+    when: cluster_exists.stdout|int == 0
+
+  - name: wait 30s
+    pause: seconds=30
+
+  when: inventory_hostname == 'master'
+  tags:
+  - cluster
+
+- name: join cluster {{ cluster_name }}
+  shell: pvecm add {{ hostvars['master']['ansible_ssh_host'] }} -use_ssh --force --link0 address={{ inventory_hostname }}
+  when: inventory_hostname != 'master'
+  throttle: 1
+  async: 30
+  poll: 2
+  tags:
+    - cluster
+
+- block:
+  - name: get nodes number
+    shell: pvecm status|grep ^Nodes|awk '{print $NF}'
+    register: nodes_number
+
+  - name: check nodes number
+    fail: msg="Nodes number doesn't match!!!"
+    failed_when: nodes_number.stdout|int != groups.pve|length
+  when: inventory_hostname == 'master'
+  tags:
+    - cluster
+
+## create apitoken
+- block:
+  - name: create {{ token_id }} apitoken
+    shell: pveum user token add root@pam {{ token_id }} --expire=0 --privsep=0 --output-format=json
+    register: apitoken
+    tags:
+      - cluster
+
+  - name: apitoken json parsing to apitoken_value vars
+    set_fact:
+      apitoken_value: "{{ apitoken.stdout | from_json  }}"
+
+  - name: create local dir
+    file:
+      name: "{{ token_dir }}"
+      state: directory
+    delegate_to: localhost
+
+  - name: save token to local file
+    copy:
+      content: "{{ apitoken_value.value }}"
+      dest: "{{ token_dir }}/{{ token_id }}-{{ hostvars['master']['ansible_ssh_host'] }}.log"
+    delegate_to: localhost
+
+  when: inventory_hostname == 'master'
+  tags:
+    - apitoken
+
+## create lvm storage
+
+- name: upload pve-tools script
+  copy: src=pve-tools.py dest=/tmp/pve-tools.py mode=0755
+  tags:
+    - lvm
+
+- name: get node name
+  shell: pvecm nodes|grep '(local)'|awk '{print $3}'
+  register: node_name
+  tags:
+    - lvm
+
+- name: create lvm storage to pve
+  shell: /tmp/pve-tools.py {{ token_id }}={{ hostvars['master']['apitoken_value']['value']}} {{ data_device }} local-lvm-MassStorage-{{ node_name.stdout }} {{ node_name.stdout }}
+  tags:
+    - lvm

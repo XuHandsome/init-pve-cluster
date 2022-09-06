@@ -1,0 +1,6 @@
+---
+# 初始化pve服务器，基本配置可以写在这个role下
+- hosts: pve
+  remote_user: root
+  roles:
+    - pve

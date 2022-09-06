@@ -1,0 +1,18 @@
+[pve]
+# 设定一个主节点，必须按照下面写法，其余节点直接写ip即可
+master ansible_ssh_host=10.53.7.1
+10.53.7.2
+10.53.7.3
+
+[pve:vars]
+# ssh账号端口密码
+ansible_ssh_user='root'
+ansible_ssh_port=22
+ansible_ssh_pass='rootpassword'
+
+# 要创建的集群名称
+cluster_name = 'test'
+# 要创建的apitoken id
+apitoken_name = 'root'
+# 数据盘符, 自动创建为lvm类型存储
+data_device = '/dev/sdb'
