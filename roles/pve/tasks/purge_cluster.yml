@@ -1,0 +1,19 @@
+- name: upload purge-cluster script
+  copy: src=purge-cluster.sh dest=/tmp/purge-cluster.sh mode=0755
+  tags:
+    - purge
+    - never
+
+- name: exec purge the cluster
+  shell: /tmp/purge-cluster.sh
+  tags:
+    - purge
+    - never
+
+- name: remove apitoken
+  shell: pveum user token remove root@pam {{ token_id }}
+  when: inventory_hostname == 'master'
+  ignore_errors: true
+  tags:
+    - purge
+    - never

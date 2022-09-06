@@ -73,3 +73,8 @@ ls -l ./logs
 total 8
 -rw-r--r-- 1 root root 36 Jul  6 17:53 test-10.53.7.1.log
 ```
+
+### 三、如果集群配置异常需要重置pve状态,可以执行集群清理脚本
+```bash
+ansible-playbook -i hosts roles/pve.yml -t purge
+```
