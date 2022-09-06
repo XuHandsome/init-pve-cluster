@@ -1,4 +1,4 @@
-# 惠山IDC PVE集群初始化
+# PVE集群初始化
 ## 功能说明
 - [x] 集群初始化，包括创建集群、加入所有节点
 - [x] 生成超级管理员apitoken，保存到本地执行目录logs/[tokenid]-[host].log
